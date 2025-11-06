@@ -1,0 +1,134 @@
+{
+  "project_info": {
+    "project_number": "691963050021",
+    "project_id": "logistica-ar",
+    "storage_bucket": "logistica-ar.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691963050021:android:f0590b92440db0b84767cc",
+        "android_client_info": {
+          "package_name": "com.android.application"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691963050021-li535hk8blkjjod15543f4je25sfhlo1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVUyUFl5I70UHUb4NxVM0UGEkhqPZ_ms0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691963050021-a5tn4qf3gid26b7btec3lu0mmg81pm4n.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691963050021-r88d27g1pm74dpqf275rsv30tmuft9ip.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.entregas"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691963050021:android:c1b2306b8d2cacb54767cc",
+        "android_client_info": {
+          "package_name": "com.example.logistica_ar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691963050021-fjf22jl7bfjd6u067j8r1fthlqbapqp6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.logistica_ar",
+            "certificate_hash": "be0d7e5f8f83c40e64df221e03b4c76c223a4102"
+          }
+        },
+        {
+          "client_id": "691963050021-u2o3vemjb7k6bj3qstkotdgaqq8g3io9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.logistica_ar",
+            "certificate_hash": "8d1634156997135d3b6b9a873a798229d64eb2bc"
+          }
+        },
+        {
+          "client_id": "691963050021-li535hk8blkjjod15543f4je25sfhlo1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVUyUFl5I70UHUb4NxVM0UGEkhqPZ_ms0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691963050021-a5tn4qf3gid26b7btec3lu0mmg81pm4n.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691963050021-r88d27g1pm74dpqf275rsv30tmuft9ip.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.entregas"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691963050021:android:82d48cf6aadb7baf4767cc",
+        "android_client_info": {
+          "package_name": "com.example.sistema_rastreabilidad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691963050021-li535hk8blkjjod15543f4je25sfhlo1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVUyUFl5I70UHUb4NxVM0UGEkhqPZ_ms0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691963050021-a5tn4qf3gid26b7btec3lu0mmg81pm4n.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691963050021-r88d27g1pm74dpqf275rsv30tmuft9ip.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.entregas"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
