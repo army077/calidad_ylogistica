@@ -129,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
                       height: 20,
                     ),
                     const Text(
-                      '¡Logistica AR!',
+                      '¡Logistica y Calidad AR!',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 30,

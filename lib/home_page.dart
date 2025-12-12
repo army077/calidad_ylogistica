@@ -19,6 +19,8 @@ class _HomePageState extends State<HomePage> {
   final List<String> _showTabsFor = [
     'maximiliano.martinez@bladecsi.com',
     'jaime.flores@asiarobotica.com',
+    'bernardo.ramirez@asiarobotica.com',
+    
   ];
 
   void _onItemTapped(int index) {

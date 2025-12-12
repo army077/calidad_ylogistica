@@ -1,7 +1,7 @@
 name: sistema_rastreabilidad
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0
+version: 0.1.0+2
 
 environment:
   sdk: ^3.6.2
@@ -39,6 +39,7 @@ dependencies:
   flutter_map: ^4.0.0
   flutter_riverpod: ^2.6.1
   flutter_launcher_icons: ^0.13.1
+  firebase_storage: ^12.4.10
 
 dev_dependencies:
   flutter_test:

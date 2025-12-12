@@ -1,9 +1,9 @@
 // lib/CalidadPage.dart
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistema_rastreabilidad/pages/incoming.dart';
 import 'package:sistema_rastreabilidad/pages/procesoInspeccion.dart';
 import 'package:sistema_rastreabilidad/pages/procesoLiberacion.dart';
-
 import 'package:sistema_rastreabilidad/pages/liberacion_empaque.dart';
 import 'package:sistema_rastreabilidad/pages/Enbarque.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +36,12 @@ class CalidadPage extends StatelessWidget {
               label: 'Procesos de inspección',
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ProcesoInspeccion()),
+                MaterialPageRoute(
+                  builder: (_) => ProcesoInspeccion(
+                    tecnicoEmail:
+                        FirebaseAuth.instance.currentUser?.email ?? '',
+                  ),
+                ),
               ),
             ),
 
