@@ -10,7 +10,7 @@ class Maquina {
   factory Maquina.fromJson(Map<String, dynamic> json) {
     return Maquina(
       id: json['id'] as int?,
-      maquina: (json['maquina'] as String).trim(),
+      maquina: (json['name'] as String).trim(),
     );
   }
 

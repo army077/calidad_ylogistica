@@ -54,14 +54,14 @@ class _ProcesoLiberacionState extends State<ProcesoLiberacion> {
   Future<void> _fetchMachines() async {
     try {
       final response = await http.get(
-        Uri.parse('https://desarrollotecnologicoar.com/api2/maquinas/'),
+        Uri.parse('https://desarrollotecnologicoar.com/api10/machine-models/'),
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           _maquinasList =
-              data.map<String>((item) => item['maquina'].toString()).toList();
+              data.map<String>((item) => item['name'].toString()).toList();
           _isLoadingMachines = false;
         });
       } else {
@@ -363,39 +363,89 @@ class _ProcesoLiberacionState extends State<ProcesoLiberacion> {
                     Expanded(
                       child: _isLoadingMachines
                           ? const Center(child: CircularProgressIndicator())
-                          : DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: 'Equipo afectado',
-                                labelStyle: GoogleFonts.roboto(fontSize: 15),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              value: _equipos,
-                              isExpanded: true,
-                              items: _maquinasList
-                                  .map<DropdownMenuItem<String>>(
-                                      (String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Tooltip(
-                                    message: value,
-                                    child: Text(value,
-                                        overflow: TextOverflow.ellipsis),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _equipos = newValue;
+                          : Autocomplete<String>(
+                              optionsBuilder:
+                                  (TextEditingValue textEditingValue) {
+                                if (textEditingValue.text.isEmpty) {
+                                  return _maquinasList;
+                                }
+                                return _maquinasList.where((String option) {
+                                  return option.toLowerCase().contains(
+                                      textEditingValue.text.toLowerCase());
                                 });
                               },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Por favor seleccione un equipo afectado';
-                                }
-                                return null;
+                              displayStringForOption: (option) => option,
+                              fieldViewBuilder: (context, controller, focusNode,
+                                  onFieldSubmitted) {
+                                return TextFormField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  readOnly: false,
+                                  decoration: InputDecoration(
+                                    labelText: 'Equipo afectado',
+                                    labelStyle:
+                                        GoogleFonts.roboto(fontSize: 15),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.arrow_drop_down),
+                                      onPressed: focusNode.requestFocus,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Por favor seleccione un equipo afectado';
+                                    }
+                                    return null;
+                                  },
+                                );
                               },
+                              onSelected: (String selection) {
+                                setState(() {
+                                  _equipos = selection;
+                                });
+                              },
+                              optionsViewBuilder:
+                                  (context, onSelected, options) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 6,
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      width: MediaQuery.of(context).size.width *
+                                          0.85,
+                                      constraints:
+                                          const BoxConstraints(maxHeight: 250),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final option =
+                                              options.elementAt(index);
+                                          return InkWell(
+                                            onTap: () => onSelected(option),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 12),
+                                              child: Text(
+                                                option,
+                                                style: const TextStyle(
+                                                    fontSize: 15),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              initialValue:
+                                  TextEditingValue(text: _equipos ?? ''),
                             ),
                     ),
                   ],
@@ -601,95 +651,76 @@ class _ProcesoLiberacionState extends State<ProcesoLiberacion> {
                   },
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // ElevatedButton(
-                    //   onPressed: () => _pickImage(ImageSource.gallery),
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color.fromRGBO(
-                    //         22, 23, 24, 0.8), // Color de fondo del botón
-                    //     shape: RoundedRectangleBorder(
-                    //       borderRadius:
-                    //           BorderRadius.circular(20), // Bordes redondeados
-                    //     ),
-                    //     padding: const EdgeInsets.symmetric(
-                    //         horizontal: 20, vertical: 10), // Espaciado interno
-                    //     elevation: 15, // Elevación para un efecto de sombra
-                    //   ),
-                    //   child: const Text(
-                    //     'Galería',
-                    //     style: TextStyle(
-                    //       color: Colors.white,
-                    //       fontSize: 16,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    // ),
-                    ElevatedButton(
-                      onPressed: _pickImages,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(22, 23, 24, 0.8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _pickImages,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromRGBO(22, 23, 24, 0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          elevation: 15,
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                        elevation: 15,
-                      ),
-                      child: const Text(
-                        'Galería',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        child: const Text(
+                          'Galería',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _pickImage(ImageSource.camera),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(
-                            22, 23, 24, 0.8), // Color de fondo del botón
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(20), // Bordes redondeados
+                      ElevatedButton(
+                        onPressed: () => _pickImage(ImageSource.camera),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromRGBO(22, 23, 24, 0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          elevation: 15,
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10), // Espaciado interno
-                        elevation: 15, // Elevación para un efecto de sombra
-                      ),
-                      child: const Text(
-                        'Cámara',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _enviarDatos,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _isSending ? Colors.grey : _buttonColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                        elevation: 15,
-                      ),
-                      child: const Text(
-                        'Enviar',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        child: const Text(
+                          'Cámara',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      ElevatedButton(
+                        onPressed: _enviarDatos,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              _isSending ? Colors.grey : _buttonColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          elevation: 15,
+                        ),
+                        child: const Text(
+                          'Enviar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

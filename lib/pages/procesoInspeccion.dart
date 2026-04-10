@@ -150,14 +150,14 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
   Future<void> _fetchMachines() async {
     try {
       final response = await http.get(
-        Uri.parse('https://desarrollotecnologicoar.com/api2/maquinas/'),
+        Uri.parse('https://desarrollotecnologicoar.com/api10/machine-models/'),
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           _maquinasList =
-              data.map<String>((item) => item['maquina'].toString()).toList();
+              data.map<String>((item) => item['name'].toString()).toList();
           _isLoadingMachines = false;
         });
       } else {
@@ -544,7 +544,7 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
     usuario = user?.displayName ?? ' ';
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(22, 23, 24, 0.8),
+        backgroundColor: const Color.from(alpha: 0.8, red: 0.086, green: 0.09, blue: 0.094),
         title: ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: Row(

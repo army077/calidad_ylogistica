@@ -18,6 +18,7 @@ class CalidadPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 14),
             // --- Incoming ---
             _MenuTile(
               imagePath: 'lib/images/incoming.png',
@@ -71,7 +72,7 @@ class CalidadPage extends StatelessWidget {
 
             _MenuTile(
               imagePath: 'lib/images/proceso_embarque2.png',
-              label: 'Proceso de liberación de embarque',
+              label: 'Liberación de embarque',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const LiberacionEmpaque()),
@@ -85,47 +86,109 @@ class CalidadPage extends StatelessWidget {
     );
   }
 }
-
-class _MenuTile extends StatelessWidget {
+class _MenuTile extends StatefulWidget {
   final String imagePath;
   final String label;
   final VoidCallback onTap;
-  final Color backgroundColor;
 
   const _MenuTile({
     required this.imagePath,
     required this.label,
     required this.onTap,
-    this.backgroundColor = Colors.black,
   });
 
   @override
+  State<_MenuTile> createState() => _MenuTileState();
+}
+
+class _MenuTileState extends State<_MenuTile> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        children: [
-          Image.asset(imagePath, width: 500),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: onTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: backgroundColor,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
-                ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: AnimatedScale(
+        scale: _hover ? 1.02 : 1.0,
+        duration: const Duration(milliseconds: 180),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 180, 180, 180),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color.fromARGB(255, 146, 146, 146).withOpacity(_hover ? 0.6 : 0.3),
+                blurRadius: _hover ? 18 : 10,
+                offset: const Offset(0, 8),
               ),
+            ],
+            border: Border.all(
+              color: _hover ? Colors.redAccent : Colors.transparent,
+              width: 1.2,
             ),
           ),
-        ],
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                child: Image.asset(
+                  widget.imagePath,
+                  width: 520,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ElevatedButton(
+                  onPressed: widget.onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 82, 82, 82),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
+
+
+ 

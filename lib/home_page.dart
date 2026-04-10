@@ -1,5 +1,5 @@
 import 'package:sistema_rastreabilidad/CalidadPage.dart';
-import 'package:sistema_rastreabilidad/LogisticaPage.dart';
+// import 'package:sistema_rastreabilidad/LogisticaPage.dart';
 import 'package:sistema_rastreabilidad/pages/maquinas_screen.dart';
 import 'package:sistema_rastreabilidad/pages/usuarios_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,9 +18,8 @@ class _HomePageState extends State<HomePage> {
   // Correos para los que MOSTRAREMOS "Máquinas" y "Colaboradores"
   final List<String> _showTabsFor = [
     'maximiliano.martinez@bladecsi.com',
-    'jaime.flores@asiarobotica.com',
-    'bernardo.ramirez@asiarobotica.com',
-    
+    'jorge.morales@asiarobotica.com',
+    'bernardo.ramirez@asiarobotica.com'
   ];
 
   void _onItemTapped(int index) {
@@ -48,8 +47,6 @@ class _HomePageState extends State<HomePage> {
     // Páginas (mantener mismo orden que los BottomNavigationBarItem)
     final pages = <Widget>[
       CalidadPage(),
-      LogisticaPage(),
-      if (showExtraTabs) MaquinasScreen(),
       if (showExtraTabs) UsuariosScreen(),
     ];
 
@@ -58,12 +55,7 @@ class _HomePageState extends State<HomePage> {
       const BottomNavigationBarItem(
         icon: Icon(Icons.verified),
         label: 'Calidad',
-        backgroundColor: Colors.black,
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.local_shipping),
-        label: 'Logística',
-        backgroundColor: Colors.black,
+        backgroundColor: Color.fromARGB(255, 36, 36, 36),
       ),
       if (showExtraTabs)
         const BottomNavigationBarItem(
@@ -71,20 +63,66 @@ class _HomePageState extends State<HomePage> {
           label: 'Máquinas',
           backgroundColor: Colors.black,
         ),
-      if (showExtraTabs)
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.group),
-          label: 'Colaboradores',
-          backgroundColor: Colors.black,
-        ),
+
     ];
 
     // Aseguramos un índice válido
     final safeIndex = _selectedIndex.clamp(0, pages.length - 1);
 
+    if (!showExtraTabs) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color.fromARGB(255, 48, 48, 48),
+          title: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Row(
+              children: [
+                Container(
+                  color: Colors.white,
+                  child: Image.asset(
+                    'lib/images/ar_inicio.png',
+                    height: 44,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Inicio',
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: GestureDetector(
+                onTap: _cerrarSesion,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: const Center(
+                    child: Text(
+                      'Salir',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: pages[safeIndex],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color.fromARGB(255, 65, 65, 65),
         title: ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: Row(
@@ -129,12 +167,12 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: pages[safeIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: navItems,
-        currentIndex: safeIndex,
-        selectedItemColor: const Color.fromARGB(255, 240, 5, 5),
-        onTap: _onItemTapped,
-      ),
+      // bottomNavigationBar: BottomNavigationBar(
+      //   items: navItems,
+      //   currentIndex: safeIndex,
+      //   selectedItemColor: const Color.fromARGB(255, 240, 5, 5),
+      //   onTap: _onItemTapped,
+      // ),
     );
   }
 }
