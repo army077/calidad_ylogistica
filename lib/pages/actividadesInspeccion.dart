@@ -46,6 +46,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
 
   final TextEditingController _timeController = TextEditingController();
   late final int idReal;
+  bool get _isLocalDemo => widget.arguments['is_local_demo'] == true;
 
   @override
   void initState() {
@@ -61,8 +62,27 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
       throw Exception("❌ No se recibió id_tabla en ActividadesInspeccion");
     }
     startedAt = DateTime.now();
-    _reloadTareas(); // Aquí inicializas la lista
-    _loadOrdenSeleccionada(idReal);
+    if (_isLocalDemo) {
+      ordenSeleccionada = OrdenInspeccion.localDemo();
+      tareas = [
+        Tarea(
+          id: -1,
+          inspectionOrderId: -1,
+          templateTaskInspectionId: -1,
+          revisionPoint: 'Verificar estado general del equipo',
+          specs: 'Punto de inspección de demostración local.',
+          suggestions: '',
+          status: 'PENDING',
+          sectionTitle: 'Inspección de ensamble',
+          position: 1,
+          category: 'General',
+        ),
+      ];
+      conteoTotal = tareas.length;
+    } else {
+      _reloadTareas();
+      _loadOrdenSeleccionada(idReal);
+    }
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -430,6 +450,8 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
   }
 
   Future<void> _reloadTareas() async {
+    if (_isLocalDemo) return;
+
     final idReal = widget.arguments['id_real']!;
     final idTabla = widget.arguments['id_tabla']!;
 
@@ -848,20 +870,19 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
     final idReal = widget.arguments['id_real']!;
     List<Map<String, dynamic>> customizations = [];
 
-    // Mostrar indicador mientras carga la info
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
+    if (!_isLocalDemo) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
 
-    // 🔹 Cargar customizaciones desde la API
-    customizations = await _fetchCustomizations(ordenSeleccionada!.workOrderId);
-
-    // Cerrar el loading dialog
-    Navigator.of(context).pop();
+      customizations =
+          await _fetchCustomizations(ordenSeleccionada!.workOrderId);
+      Navigator.of(context).pop();
+    }
 
     // Mostrar el diálogo final con info general + customizaciones
     return showDialog<void>(
@@ -952,6 +973,10 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                 ),
                 _infoRow(Icons.precision_manufacturing, 'Equipo',
                     ordenSeleccionada?.modelName),
+                _infoRow(Icons.confirmation_number, 'ID de inspección',
+                  ordenSeleccionada?.id.toString()),
+                _infoRow(Icons.assignment, 'ID de orden de trabajo',
+                  ordenSeleccionada?.workOrderId.toString()),
                 _infoRow(
                     Icons.comment, 'Comentarios', ordenSeleccionada?.comments),
                 _infoRow(Icons.qr_code, 'Número de Serie',
@@ -960,7 +985,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                 const SizedBox(height: 8),
                 _infoRow(
                   Icons.access_time,
-                  'Fecha de creación',
+                  'Solicitada',
                   ordenSeleccionada != null
                       ? DateFormat('dd/MM/yyyy HH:mm')
                           .format(ordenSeleccionada!.createdAt)
@@ -1114,11 +1139,11 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
               onPressed:
                   _infoDialog, // Llama a la función para ver los detalles de la orden
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_forever, color: Colors.white),
-              onPressed:
-                  _confirmarReinicio, // Llama a la función para limpiar el formulario
-            ),
+            if (!_isLocalDemo)
+              IconButton(
+                icon: const Icon(Icons.delete_forever, color: Colors.white),
+                onPressed: _confirmarReinicio,
+              ),
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.white),
               onPressed: _cerrarSesion,
@@ -1137,6 +1162,19 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                 child: ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
+                    if (_isLocalDemo)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'DEMO LOCAL: los datos no se guardan.',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     if (tareas.any((t) => t.completada)) ...[
                       _buildSectionTitle('Puntos de inspección completados',
                           Icons.check_circle),
@@ -1155,7 +1193,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                   ],
                 ),
               ),
-        floatingActionButton: conteoTotal > 0 &&
+        floatingActionButton: !_isLocalDemo && conteoTotal > 0 &&
                 conteoCompletados == conteoTotal
             ? FloatingActionButton(
                 onPressed: _isLoading
@@ -1224,7 +1262,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
             ? const Icon(Icons.lock_outline, color: Colors.grey)
             : Checkbox(
                 value: tarea.completada,
-                onChanged: (bool? value) {
+                onChanged: _isLocalDemo ? null : (bool? value) {
                   if (tarea.completada) {
                     _markAsCompleted(tarea, false);
                   } else {
@@ -1232,7 +1270,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                   }
                 },
               ),
-        onTap: () {
+        onTap: _isLocalDemo ? null : () {
           if (tarea.completada) return; // No hacer nada si ya está completada
           _showTaskDetails(tarea);
         },

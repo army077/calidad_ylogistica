@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -398,19 +399,39 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
+        final fetchedOrders = data
+            .map<Map<String, dynamic>>((orden) => {
+                  'id': orden['id'],
+                  'id_real': orden['id'],
+                  'titulo': orden["titulo"] ?? 'Título no disponible',
+                  'status': orden['status'],
+                  'assigned_tech_email': orden['assigned_tech_email'],
+                  'inspection_type': orden['inspection_type'],
+                  'is_local_demo': false,
+                })
+            .toList();
+
+        final hasActiveOrders = fetchedOrders.any((orden) =>
+          orden['status'] == 'OPEN' ||
+          orden['status'] == 'PENDING' ||
+          orden['status'] == 'IN_PROGRESS');
+
+        if (kDebugMode && !hasActiveOrders) {
+          fetchedOrders.add({
+            'id': -1,
+            'id_real': -1,
+            'titulo': 'DEMO LOCAL',
+            'status': 'PENDING',
+            'assigned_tech_email': widget.tecnicoEmail,
+            'inspection_type': 'Inspección de ensamble',
+            'is_local_demo': true,
+          });
+        }
+
         // final filteredData =
         //     data.where((orden) => orden['status'] == 'OPEN').toList();
         setState(() {
-          ordenes = data
-              .map<Map<String, dynamic>>((orden) => {
-                    'id': orden['id'],
-                    'id_real': orden['id'],
-                    'titulo': orden["titulo"] ?? 'Título no disponible',
-                    'status': orden['status'], // ✅ importante
-                    'assigned_tech_email': orden['assigned_tech_email'],
-                    'inspection_type': orden['inspection_type'],
-                  })
-              .toList();
+          ordenes = fetchedOrders;
 
           openOrdenes = ordenes.where((orden) => orden['status'] == 'OPEN' || orden['status'] == 'PENDING' || orden['status'] == 'IN_PROGRESS').toList();
           if (openOrdenes.isNotEmpty) selectedId = openOrdenes.first['id'];
@@ -709,9 +730,11 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                                           "🔎 Orden seleccionada: $ordenSeleccionada");
 
                                       // 2) Verificar y/o asignar la orden antes de continuar
-                                      final puedeContinuar =
+                                        final esDemoLocal =
+                                          ordenSeleccionada['is_local_demo'] == true;
+                                        final puedeContinuar = esDemoLocal ||
                                           await _verificarAsignacionYContinuar(
-                                              ordenSeleccionada);
+                                            ordenSeleccionada);
 
                                       if (!puedeContinuar) {
                                         print(
@@ -727,6 +750,7 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                                         arguments: {
                                           'id_tabla': idReal,
                                           'id_real':idReal, // si necesitas ambos
+                                          'is_local_demo': esDemoLocal,
                                         },
                                       );
                                     }

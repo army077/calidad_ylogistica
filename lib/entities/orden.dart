@@ -75,14 +75,35 @@ class OrdenInspeccion {
     required this.operadorProduccion,
   });
 
+  factory OrdenInspeccion.localDemo() {
+    return OrdenInspeccion(
+      id: -1,
+      inspectionTemplateId: -1,
+      modelId: -1,
+      assignedTechEmail: null,
+      status: 'PENDING',
+      createdAt: DateTime.now(),
+      workOrderId: -1,
+      estacion: 999,
+      templateId: -1,
+      templateVersion: 1,
+      machineSerial: 'DEMO-SERIE-001',
+      customerName: 'Orden de prueba local',
+      comments: 'Datos de demostración; no se guardan en el servidor.',
+      modelName: 'Equipo de prueba',
+      operadorProduccion: 'demo@asiarobotica.com',
+    );
+  }
+
   factory OrdenInspeccion.fromJson(Map<String, dynamic> json) {
     return OrdenInspeccion(
-      id: json['id'],
+      id: json['inspection_order_id'] ?? json['id'],
       inspectionTemplateId: json['inspection_template_id'],
       modelId: json['model_id'],
       assignedTechEmail: json['assigned_tech_email'],
-      status: json['status'] ?? 'UNKNOWN',
-      createdAt: DateTime.parse(json['created_at']),
+      status: json['inspection_status'] ?? json['status'] ?? 'UNKNOWN',
+      createdAt: DateTime.parse(
+          json['inspection_created_at'] ?? json['created_at']),
       startedAt: json['started_at'] != null
           ? DateTime.tryParse(json['started_at'])
           : null,

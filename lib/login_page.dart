@@ -17,13 +17,35 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-void googleSignInFunction() {
-  AuthService().signInWithGoogle();
-}
-
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  bool _isGoogleSigningIn = false;
+
+  Future<void> _signInWithGoogle() async {
+    if (_isGoogleSigningIn) return;
+
+    setState(() => _isGoogleSigningIn = true);
+    try {
+      await AuthService().signInWithGoogle();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      showCustomSnackBar(
+        context,
+        'Firebase (${e.code}): ${e.message ?? 'No se pudo iniciar sesión.'}',
+        backgroundColor: Colors.red,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showCustomSnackBar(
+        context,
+        'No se pudo iniciar sesión con Google: $e',
+        backgroundColor: Colors.red,
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleSigningIn = false);
+    }
+  }
 
   void iniciarsesion() async {
     showDialog(
@@ -202,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 30),
                     GestureDetector(
-                      onTap: googleSignInFunction,
+                      onTap: _isGoogleSigningIn ? null : _signInWithGoogle,
                       child: Container(
                         margin: const EdgeInsets.all(8),
                         width: 200,
@@ -216,13 +238,23 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(3.0),
-                              child: Image.asset(
-                                'lib/images/google_sign_in.png',
-                                height: 32,
-                              ),
+                              child: _isGoogleSigningIn
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      'lib/images/google_sign_in.png',
+                                      height: 32,
+                                    ),
                             ),
-                            const Text(
-                              'Entrar con Google',
+                            Text(
+                                _isGoogleSigningIn
+                                  ? 'Conectando...'
+                                  : 'Entrar con Google',
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontWeight: FontWeight.bold,

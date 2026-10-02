@@ -5,14 +5,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:sistema_rastreabilidad/services/notif_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'pages/procesoInspeccion.dart';
 import 'pages/actividadesInspeccion.dart';
-
-Future<void> subscribeToOperadoresTopic() async {
-  await FirebaseMessaging.instance.subscribeToTopic('operadores');
-  print('✅ Suscrito al topic operadores');
-}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +18,7 @@ Future<void> main() async {
     badge: true,
     sound: true,
   );
-  await subscribeToOperadoresTopic();
+  await NotificationService.instance.inicializar();
 
   // 🔄 Inicializar listeners de token
   _listenToTokenRefresh();
