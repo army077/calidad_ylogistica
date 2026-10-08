@@ -409,6 +409,7 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                     'status': orden['status'], // ✅ importante
                     'assigned_tech_email': orden['assigned_tech_email'],
                     'inspection_type': orden['inspection_type'],
+                    'created_at': orden['created_at'],
                   })
               .toList();
 
