@@ -41,6 +41,8 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
   List<File> fotosPendientesEvidencia = [];
 
   bool _isLoading = false; // Variable de estado para el indicador de carga
+  bool _liberacionEnCurso = false;
+  bool _modalSeccionAbierto = false;
   DateTime? startedAt;
   OrdenInspeccion? ordenSeleccionada;
 
@@ -276,7 +278,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
   }
 
   void _verificarSeccionesCompletas(Tarea tarea) async {
-    if (tareas.isEmpty) return;
+    if (tareas.isEmpty || _modalSeccionAbierto || !mounted) return;
 
     // agrupa por sección
     final Map<String, List<Tarea>> porSeccion = {};
@@ -287,104 +289,160 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
     }
 
     // recorre cada sección
-    porSeccion.forEach((seccion, listaTareas) async {
+    for (final entrada in porSeccion.entries) {
+      if (!mounted) return;
+      final seccion = entrada.key;
+      final listaTareas = entrada.value;
       final todasCompletas = listaTareas.every((t) => t.completada);
 
       if (todasCompletas) {
-        // evita mostrar 500 modales si build se repite
-        if (_seccionesCompletadas.contains(seccion)) return;
+        if (_seccionesCompletadas.contains(seccion)) continue;
 
-        _seccionesCompletadas.add(seccion);
-
-        // muestra aviso
-        await _mostrarModalSeccionTerminada(seccion, tarea);
+        _modalSeccionAbierto = true;
+        try {
+          await _mostrarModalSeccionTerminada(seccion, tarea);
+        } finally {
+          _modalSeccionAbierto = false;
+        }
       }
-    });
+    }
   }
 
   Future<void> _mostrarModalSeccionTerminada(
       String seccion, Tarea tarea) async {
+    bool liberandoDialogo = false;
     return showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Sección completada',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Has completado todas las actividades de la sección.\n\n'
-          'Si presionas aceptar se le liberará la actividad "$seccion" al operador de producción.',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                {Navigator.pop(context), _markAsCompleted(tarea, false)},
-            child: const Text("Cancelar"),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-              backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      barrierDismissible: false,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => PopScope(
+          canPop: !liberandoDialogo,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Sección completada',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ),
-          TextButton(
-            onPressed: () =>
-                {_completarTareaProduccion(seccion), Navigator.pop(context)},
-            child: const Text("Aceptar"),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color.fromARGB(255, 0, 126, 21),
-              backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+            content: Text(
+              'Has completado todas las actividades de la sección.\n\n'
+              'Si presionas aceptar se le liberará la actividad "$seccion" al operador de producción.',
+              style: TextStyle(fontSize: 16),
             ),
+            actions: [
+              TextButton(
+                onPressed: liberandoDialogo
+                    ? null
+                    : () {
+                        if (liberandoDialogo || _liberacionEnCurso) return;
+                        Navigator.pop(dialogContext);
+                        _markAsCompleted(tarea, false);
+                      },
+                child: const Text("Cancelar"),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                  backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+                ),
+              ),
+              TextButton(
+                onPressed: liberandoDialogo || _liberacionEnCurso || _isLoading
+                    ? null
+                    : () async {
+                        if (liberandoDialogo || _liberacionEnCurso || _isLoading) return;
+                        setDialogState(() {
+                          liberandoDialogo = true;
+                        });
+                        final liberada =
+                            await _completarTareaProduccion(seccion);
+                        if (!mounted || !dialogContext.mounted) return;
+                        setDialogState(() {
+                          liberandoDialogo = false;
+                        });
+                        if (liberada) {
+                          _seccionesCompletadas.add(seccion);
+                          Navigator.pop(dialogContext);
+                        }
+                      },
+                child: Text(liberandoDialogo ? "Liberando..." : "Aceptar"),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color.fromARGB(255, 0, 126, 21),
+                  backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Future<void> _completarTareaProduccion(String seccion) async {
-    final idWO = ordenSeleccionada?.workOrderId;
+  Future<bool> _completarTareaProduccion(String seccion) async {
+    if (!mounted || _liberacionEnCurso || _isLoading) return false;
 
-    if (idWO == null) {
-      print("⚠️ No hay workOrderId");
-      return;
+    setState(() {
+      _liberacionEnCurso = true;
+    });
+
+    bool rechazarLiberacion(String mensaje) {
+      print(mensaje);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return false;
     }
-
-    // 1️⃣ Filtrar solo tareas de la sección actual
-    final tareasSeccion =
-        tareas.where((t) => t.sectionTitle == seccion).toList();
-
-    if (tareasSeccion.isEmpty) {
-      print("⚠️ No existen tareas en la sección $seccion");
-      return;
-    }
-
-    // 2️⃣ Encontrar el started_at más viejo (inicio real de la sección)
-    tareasSeccion.removeWhere((t) => t.startedAt == null);
-    if (tareasSeccion.isEmpty) {
-      print("⚠️ No hay startedAt válidos en la sección");
-      return;
-    }
-
-    tareasSeccion.sort((a, b) => a.startedAt!.compareTo(b.startedAt!));
-    final DateTime primerStarted = tareasSeccion.first.startedAt!;
-    print("Primer started en sección '$seccion': $primerStarted");
-
-    // 3️⃣ finished_at debe ser ahora
-    final DateTime finishedNow = DateTime.now();
-    print("Finished at ahora: $finishedNow");
-
-    // 4️⃣ Calcular minutos reales
-    final int actualMinutes = finishedNow.difference(primerStarted).inMinutes;
-
-    final payload = {
-      "inspection_order_id": idReal,
-      "section_title": seccion,
-      "started_at": primerStarted.toIso8601String(),
-      "finished_at": finishedNow.toIso8601String(),
-      "actual_minutes": actualMinutes,
-    };
 
     try {
+      final idWO = ordenSeleccionada?.workOrderId;
+
+      if (idWO == null || idWO <= 0) {
+        return rechazarLiberacion("No se puede liberar: falta la orden de trabajo");
+      }
+      if (idReal <= 0) {
+        return rechazarLiberacion("No se puede liberar: falta el ID de inspección");
+      }
+      if (seccion.isEmpty) {
+        return rechazarLiberacion("No se puede liberar: falta la sección");
+      }
+
+      // 1️⃣ Filtrar solo tareas de la sección actual
+      final tareasSeccion =
+          tareas.where((t) => t.sectionTitle == seccion).toList();
+
+      if (tareasSeccion.isEmpty) {
+        return rechazarLiberacion("No existen tareas en la sección $seccion");
+      }
+
+      // 2️⃣ Encontrar el started_at más viejo (inicio real de la sección)
+      tareasSeccion.removeWhere((t) => t.startedAt == null);
+      if (tareasSeccion.isEmpty) {
+        return rechazarLiberacion("No hay startedAt válidos en la sección");
+      }
+
+      tareasSeccion.sort((a, b) => a.startedAt!.compareTo(b.startedAt!));
+      final DateTime primerStarted = tareasSeccion.first.startedAt!;
+      print("Primer started en sección '$seccion': $primerStarted");
+
+      // 3️⃣ finished_at debe ser ahora
+      final DateTime finishedNow = DateTime.now();
+      print("Finished at ahora: $finishedNow");
+
+      // 4️⃣ Calcular minutos reales
+      final int actualMinutes = finishedNow.difference(primerStarted).inMinutes;
+
+      final payload = {
+        "inspection_order_id": idReal,
+        "section_title": seccion,
+        "started_at": primerStarted.toIso8601String(),
+        "finished_at": finishedNow.toIso8601String(),
+        "actual_minutes": actualMinutes,
+      };
+
       final url = Uri.parse(
         "https://desarrollotecnologicoar.com/api10/quality/liberar_orden/$idWO",
       );
@@ -397,26 +455,31 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
 
       if (res.statusCode == 200) {
         print("✅ Sección '$seccion' liberada correctamente en producción.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Sección '$seccion' liberada en producción ✅"),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      } else {
-        print("❌ Error liberando sección: ${res.statusCode}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text("Error liberando sección '$seccion' (${res.statusCode})"),
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Sección '$seccion' liberada en producción ✅"),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return true;
       }
+
+      return rechazarLiberacion(
+          "Error liberando sección '$seccion' (${res.statusCode})");
     } catch (e) {
       print("❌ Error en _completarTareaProduccion: $e");
+      return rechazarLiberacion("Error de conexión al liberar la sección");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _liberacionEnCurso = false;
+        });
+      } else {
+        _liberacionEnCurso = false;
+      }
     }
   }
 
@@ -1159,7 +1222,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
         floatingActionButton: conteoTotal > 0 &&
                 conteoCompletados == conteoTotal
             ? FloatingActionButton(
-                onPressed: _isLoading
+                onPressed: _isLoading || _liberacionEnCurso
                     ? null
                     : () async {
                         final bool pinValid = await _requestPinFinalized();
@@ -1178,7 +1241,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                       },
                 backgroundColor: const Color.fromARGB(255, 46, 46, 46),
                 foregroundColor: Colors.white,
-                child: _isLoading
+                child: _isLoading || _liberacionEnCurso
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Icon(Icons.send),
               )
@@ -1948,6 +2011,12 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
   }
 
   Future<void> _finalizarOrdenAgendada() async {
+    if (!mounted ||
+        _isLoading ||
+        _liberacionEnCurso ||
+        tareas.isEmpty ||
+        tareas.any((t) => !t.completada)) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -1988,6 +2057,28 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/procesoInspeccion');
         }
+      } else if (response.statusCode == 409) {
+        String mensaje = 'No se puede finalizar la inspección todavía';
+        try {
+          final body = await response.transform(utf8.decoder).join();
+          final data = jsonDecode(body);
+          if (data is Map) {
+            final detalle = data['error'] ?? data['message'];
+            if (detalle is String && detalle.trim().isNotEmpty) {
+              mensaje = detalle;
+            }
+          }
+        } catch (_) {
+          // Conserva el mensaje de conflicto si la respuesta no es JSON.
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(mensaje),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       } else if (response.statusCode == 404) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -2016,9 +2107,11 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
