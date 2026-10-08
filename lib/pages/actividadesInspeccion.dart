@@ -438,8 +438,8 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
       final payload = {
         "inspection_order_id": idReal,
         "section_title": seccion,
-        "started_at": primerStarted.toIso8601String(),
-        "finished_at": finishedNow.toIso8601String(),
+        "started_at": primerStarted.toUtc().toIso8601String(),
+        "finished_at": finishedNow.toUtc().toIso8601String(),
         "actual_minutes": actualMinutes,
       };
 
@@ -1905,8 +1905,8 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
     });
     final payload = {
       "status": isCompleted ? "DONE" : "PENDING",
-      "started_at": startedAt.toIso8601String(),
-      "finished_at": finishedAt.toIso8601String(),
+      "started_at": startedAt.toUtc().toIso8601String(),
+      "finished_at": finishedAt.toUtc().toIso8601String(),
       "actual_minutes": isCompleted ? actualMinutes : null,
     };
 
@@ -2023,16 +2023,13 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
 
     try {
       final int idTabla = widget.arguments['id_tabla']!;
-      final startedAt =
-          widget.arguments['started_at'] ?? DateTime.now().toIso8601String();
 
       final url = Uri.parse(
         'https://desarrollotecnologicoar.com/api10/quality/$idTabla/insp_end',
       );
 
       final request = await HttpClient().putUrl(url)
-        ..headers.contentType = ContentType.json
-        ..write(jsonEncode({"started_at": startedAt}));
+        ..headers.contentType = ContentType.json;
 
       final response = await request.close();
 
