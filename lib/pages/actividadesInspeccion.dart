@@ -377,6 +377,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
     final int actualMinutes = finishedNow.difference(primerStarted).inMinutes;
 
     final payload = {
+      "inspection_order_id": idReal,
       "section_title": seccion,
       "started_at": primerStarted.toIso8601String(),
       "finished_at": finishedNow.toIso8601String(),
