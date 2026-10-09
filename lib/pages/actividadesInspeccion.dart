@@ -1881,34 +1881,68 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
 
   void _markAsCompleted(Tarea tarea, bool isCompleted) async {
     final int tareaId = tarea.id;
-    // Definir hora actual
-    final now = DateTime.now();
-    // Buscar última tarea completada (para saber cuándo empezó esta)
-    final tareasCompletadas = tareas.where((t) => t.completada).toList()
-      ..sort((a, b) => a.position.compareTo(b.position));
-    DateTime startedAt;
-    if (tareasCompletadas.isEmpty) {
-      // Si es la primera tarea completada, inicia desde el inicio de la orden o ahora
-      startedAt =
-          ordenSeleccionada?.createdAt ?? ordenSeleccionada?.createdAt ?? now;
-    } else {
-      // Si ya hay tareas, usar el último finished_at
-      final ultima = tareasCompletadas.last;
 
-      startedAt = ultima.finishedAt ?? now;
+    void mostrarError(String mensaje) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.redAccent),
+      );
     }
-    DateTime finishedAt = now;
-    int actualMinutes = finishedAt.difference(startedAt).inMinutes;
-    // Actualizar visualmente el estado
-    setState(() {
-      tarea.completada = isCompleted;
-    });
-    final payload = {
-      "status": isCompleted ? "DONE" : "PENDING",
-      "started_at": startedAt.toUtc().toIso8601String(),
-      "finished_at": finishedAt.toUtc().toIso8601String(),
-      "actual_minutes": isCompleted ? actualMinutes : null,
-    };
+
+    final now = DateTime.now();
+    late DateTime startedAt;
+    late int actualMinutes;
+    if (isCompleted) {
+      final inicioInspeccion = ordenSeleccionada?.startedAt;
+      if (inicioInspeccion == null) {
+        mostrarError('No se puede completar: falta el inicio de la inspección.');
+        return;
+      }
+
+      final inicioPersistido = tarea.startedAt;
+      if (inicioPersistido != null) {
+        if (inicioPersistido.isBefore(inicioInspeccion)) {
+          mostrarError(
+              'Inconsistencia: la tarea inicia antes que la inspección.');
+          return;
+        }
+        startedAt = inicioPersistido;
+      } else {
+        DateTime? ultimoCierre;
+        for (final anterior in tareas) {
+          // completada proviene de DONE o de una actualización con HTTP 200.
+          if (anterior.id == tareaId || !anterior.completada) continue;
+          final cierre = anterior.finishedAt;
+          if (cierre != null &&
+              (ultimoCierre == null || cierre.isAfter(ultimoCierre))) {
+            ultimoCierre = cierre;
+          }
+        }
+        startedAt = ultimoCierre ?? inicioInspeccion;
+        if (startedAt.isBefore(inicioInspeccion)) {
+          startedAt = inicioInspeccion;
+        }
+      }
+
+      if (startedAt.isAfter(now)) {
+        mostrarError('Inconsistencia: el inicio de la tarea está en el futuro.');
+        return;
+      }
+      actualMinutes = now.difference(startedAt).inMinutes;
+    }
+
+    final payload = isCompleted
+        ? {
+            "status": "DONE",
+            "started_at": startedAt.toUtc().toIso8601String(),
+            "finished_at": now.toUtc().toIso8601String(),
+            "actual_minutes": actualMinutes,
+          }
+        : {
+            "status": "PENDING",
+            "finished_at": null,
+            "actual_minutes": null,
+          };
 
     try {
       final url = Uri.parse(
@@ -1920,6 +1954,31 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
       final response = await request.close();
 
       if (response.statusCode == 200) {
+        DateTime? inicioConservado = tarea.startedAt;
+        if (!isCompleted) {
+          final body = await response.transform(utf8.decoder).join();
+          if (body.trim().isNotEmpty) {
+            try {
+              final data = jsonDecode(body);
+              final task = data is Map<String, dynamic> ? data['task'] : null;
+              if (task is Map<String, dynamic> &&
+                  task.containsKey('started_at')) {
+                inicioConservado = task['started_at'] == null
+                    ? null
+                    : DateTime.parse(task['started_at']).toUtc();
+              }
+            } catch (e) {
+              print('No se pudo leer started_at de la respuesta: $e');
+            }
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          tarea.completada = isCompleted;
+          tarea.startedAt = isCompleted ? startedAt : inicioConservado;
+          tarea.finishedAt = isCompleted ? now : null;
+          tarea.actualMinutes = isCompleted ? actualMinutes : null;
+        });
         print('✅ Inspección ${tarea.revisionPoint} marcada como completada.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1931,17 +1990,18 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
           ),
         );
         if (isCompleted) {
-          tarea.startedAt = startedAt;
-          tarea.finishedAt = finishedAt;
-          tarea.actualMinutes = actualMinutes;
           HapticFeedback.mediumImpact();
           SystemSound.play(SystemSoundType.click);
         }
       } else {
         print('⚠️ Error al actualizar tarea. Código: ${response.statusCode}');
+        mostrarError('Error al actualizar la tarea (${response.statusCode}).');
+        return;
       }
     } catch (e) {
       print('❌ Error al actualizar progreso: $e');
+      mostrarError('No se pudo actualizar la tarea. Intenta de nuevo.');
+      return;
     }
 
     // actualizar conteos y verificar secciones
