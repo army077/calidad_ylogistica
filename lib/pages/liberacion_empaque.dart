@@ -1,3 +1,4 @@
+import 'package:sistema_rastreabilidad/componentes/section_header.dart';
 // ignore_for_file: library_private_types_in_public_api, unused_element, unnecessary_null_comparison, use_build_context_synchronously, avoid_print, file_names
 
 import 'dart:convert';
@@ -353,6 +354,10 @@ class _ProcesoLiberacionState extends State<LiberacionEmpaque> {
             key: _formKey,
             child: Column(
               children: [
+                const SectionHeader(
+                  imagePath: 'lib/images/proceso_embarque2.png',
+                  title: 'Liberación de embarque',
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                     controller: _numSerie,

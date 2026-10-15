@@ -1,4 +1,5 @@
 import 'package:sistema_rastreabilidad/CalidadPage.dart';
+import 'package:sistema_rastreabilidad/pages/produccion_ensamble.dart';
 // import 'package:sistema_rastreabilidad/LogisticaPage.dart';
 import 'package:sistema_rastreabilidad/pages/maquinas_screen.dart';
 import 'package:sistema_rastreabilidad/pages/usuarios_screen.dart';
@@ -47,7 +48,7 @@ class _HomePageState extends State<HomePage> {
 
     // Páginas (mantener mismo orden que los BottomNavigationBarItem)
     final pages = <Widget>[
-      CalidadPage(),
+      const ProduccionEnsamble(),
       if (showExtraTabs) UsuariosScreen(),
     ];
 
@@ -70,101 +71,79 @@ class _HomePageState extends State<HomePage> {
     // Aseguramos un índice válido
     final safeIndex = _selectedIndex.clamp(0, pages.length - 1);
 
-    if (!showExtraTabs) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color.fromARGB(255, 48, 48, 48),
-          title: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Row(
+    return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: Builder(builder: (drawerContext) {
+            final cs = Theme.of(drawerContext).colorScheme;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  color: Colors.white,
-                  child: Image.asset(
-                    'lib/images/ar_inicio.png',
-                    height: 44,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Text(
+                    'Formularios',
+                    style: Theme.of(drawerContext).textTheme.titleLarge,
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Inicio',
-                  style: TextStyle(
-                    color: Colors.white,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    user?.email ?? '',
+                    style: TextStyle(color: cs.onSurfaceVariant),
                   ),
+                ),
+                const Divider(height: 24),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    children: [
+                      for (final item in calidadMenuItems(context))
+                        ListTile(
+                          leading: Icon(item.icon, color: cs.primary),
+                          title: Text(item.title),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          onTap: () {
+                            Navigator.pop(drawerContext);
+                            item.onTap();
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded),
+                  title: const Text('Cerrar sesión'),
+                  onTap: _cerrarSesion,
                 ),
               ],
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: GestureDetector(
-                onTap: _cerrarSesion,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: const Center(
-                    child: Text(
-                      'Salir',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
+            );
+          }),
+        ),
+      ),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                color: Colors.white,
+                child: Image.asset('lib/images/ar_inicio.png', height: 40),
               ),
             ),
+            const SizedBox(width: 12),
+            const Text('Inicio'),
           ],
         ),
-        body: pages[safeIndex],
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 65, 65, 65),
-        title: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Row(
-            children: [
-              Container(
-                color: Colors.white,
-                child: Image.asset(
-                  'lib/images/ar_inicio.png',
-                  height: 44,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Inicio',
-                style: TextStyle(
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: GestureDetector(
-              onTap: _cerrarSesion,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Center(
-                  child: Text(
-                    'Salir',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          TextButton.icon(
+            onPressed: _cerrarSesion,
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('Salir'),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: pages[safeIndex],

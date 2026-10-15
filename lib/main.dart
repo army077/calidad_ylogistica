@@ -1,4 +1,5 @@
 import 'package:sistema_rastreabilidad/auth_page.dart';
+import 'package:sistema_rastreabilidad/config/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'firebase_options.dart';
@@ -85,6 +86,15 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
+      // Evita que la barra de navegación del sistema tape el contenido inferior
+      builder: (context, child) => SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: AuthPage(),
       onGenerateRoute: (settings) {
         final currentUser = FirebaseAuth.instance.currentUser;

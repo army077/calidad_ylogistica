@@ -1,3 +1,4 @@
+import 'package:sistema_rastreabilidad/componentes/section_header.dart';
 // ignore_for_file: library_private_types_in_public_api, unused_element, unnecessary_null_comparison, use_build_context_synchronously, avoid_print, file_names
 
 import 'dart:convert';
@@ -631,6 +632,10 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                 padding: const EdgeInsets.all(16.0),
                 children: [
                   // Título
+                  const SectionHeader(
+                    imagePath: 'lib/images/procesosInspeccion.png',
+                    title: 'Procesos de inspección',
+                  ),
                   const SizedBox(height: 20),
                   const Text(
                     'Selecciona una orden para inspeccionar',
@@ -665,7 +670,8 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                           children: [
                             const Text(
                               'Selecciona una orden para cargar el proceso de inspección:',
-                              style: TextStyle(fontSize: 18),
+                              style: TextStyle(
+                                  fontSize: 18, color: Colors.black87),
                             ),
                             const SizedBox(height: 20),
 
@@ -673,6 +679,10 @@ class _ProcesoInspeccionState extends State<ProcesoInspeccion> {
                             DropdownButton<int>(
                               value: selectedId,
                               isExpanded: true,
+                              dropdownColor: Colors.white,
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black87),
+                              iconEnabledColor: Colors.black54,
                               items: openOrdenes.map((orden) {
                                 final String titulo =
                                     orden['titulo']?.toString() ?? '';

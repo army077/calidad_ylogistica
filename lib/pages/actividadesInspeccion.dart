@@ -890,6 +890,8 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -917,6 +919,7 @@ class _ActividadesInspeccion extends State<ActividadesInspeccion>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
