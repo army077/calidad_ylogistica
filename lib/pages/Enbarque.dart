@@ -1,3 +1,4 @@
+import 'package:sistema_rastreabilidad/componentes/section_header.dart';
 // ignore_for_file: library_private_types_in_public_api, unused_element, unnecessary_null_comparison, use_build_context_synchronously, avoid_print, file_names
 
 import 'dart:convert';
@@ -316,6 +317,10 @@ class _EmbarqueState extends State<Embarque> {
             key: _formKey,
             child: Column(
               children: [
+                const SectionHeader(
+                  imagePath: 'lib/images/embarques.png',
+                  title: 'Pre-Embarque',
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _cliente,

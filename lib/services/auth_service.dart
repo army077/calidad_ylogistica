@@ -9,36 +9,29 @@ class AuthService {
 
   /// Login con Google + Firebase + guardado de token FCM
   Future<UserCredential?> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? gUser = await _googleSignIn.signIn();
+    final GoogleSignInAccount? gUser = await _googleSignIn.signIn();
 
-      if (gUser == null) {
-        // Usuario canceló login
-        return null;
-      }
-
-      final GoogleSignInAuthentication gAuth =
-          await gUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: gAuth.accessToken,
-        idToken: gAuth.idToken,
-      );
-
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        await _saveFcmToken(user);
-      }
-
-      return userCredential;
-    } catch (e) {
-      print("Error en signInWithGoogle: $e");
+    if (gUser == null) {
       return null;
     }
+
+    final GoogleSignInAuthentication gAuth = await gUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: gAuth.accessToken,
+      idToken: gAuth.idToken,
+    );
+
+    final UserCredential userCredential =
+        await _auth.signInWithCredential(credential);
+
+    final User? user = userCredential.user;
+
+    if (user != null) {
+      await _saveFcmToken(user);
+    }
+
+    return userCredential;
   }
 
   /// Guardar token FCM en Firestore

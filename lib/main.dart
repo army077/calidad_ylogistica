@@ -1,18 +1,15 @@
 import 'package:sistema_rastreabilidad/auth_page.dart';
+import 'package:sistema_rastreabilidad/config/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:sistema_rastreabilidad/services/notif_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'pages/procesoInspeccion.dart';
 import 'pages/actividadesInspeccion.dart';
-
-Future<void> subscribeToOperadoresTopic() async {
-  await FirebaseMessaging.instance.subscribeToTopic('operadores');
-  print('✅ Suscrito al topic operadores');
-}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +19,7 @@ Future<void> main() async {
     badge: true,
     sound: true,
   );
-  await subscribeToOperadoresTopic();
+  await NotificationService.instance.inicializar();
 
   // 🔄 Inicializar listeners de token
   _listenToTokenRefresh();
@@ -89,6 +86,15 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
+      // Evita que la barra de navegación del sistema tape el contenido inferior
+      builder: (context, child) => SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: AuthPage(),
       onGenerateRoute: (settings) {
         final currentUser = FirebaseAuth.instance.currentUser;
