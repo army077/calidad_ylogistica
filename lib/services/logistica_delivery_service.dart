@@ -6,12 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:uuid/uuid.dart';
 
-// Solo LOCAL. En un dispositivo, sustituir localhost por el host local accesible:
-// --dart-define=LOGISTICA_API10_BASE_URL=http://<HOST_LOCAL>:3010/api10
-const logisticaApi10BaseUrl = String.fromEnvironment(
-  'LOGISTICA_API10_BASE_URL',
-  defaultValue: 'http://localhost:3010/api10',
-);
+import '../config/logistica_api_config.dart';
+
+// Preserve the public constant imported by the screen and existing callers.
+export '../config/logistica_api_config.dart' show logisticaApi10BaseUrl;
 
 const deliveryPhotoMaxBytes = 10 * 1024 * 1024;
 const deliverySignatureMaxBytes = 2 * 1024 * 1024;
@@ -310,11 +308,11 @@ class LogisticaDeliveryService {
     this.requestTimeout = const Duration(seconds: 30),
     this.uploadTimeout = const Duration(minutes: 3),
   })  : _tokenProvider = tokenProvider,
-        _baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
+        _config = LogisticaApiConfig(baseUrl: baseUrl),
         _clientFactory = clientFactory ?? http.Client.new;
 
   final Future<String?> Function() _tokenProvider;
-  final String _baseUrl;
+  final LogisticaApiConfig _config;
   final http.Client Function() _clientFactory;
   final Duration requestTimeout;
   final Duration uploadTimeout;
@@ -327,17 +325,11 @@ class LogisticaDeliveryService {
     // Persist before HTTP, and retry a failed terminal checkpoint without HTTP.
     await persist?.call(attempt);
     if (attempt.completed) return;
-    final base = Uri.tryParse(_baseUrl);
-    if (base == null ||
-        base.scheme != 'http' ||
-        base.host.isEmpty ||
-        base.port != 3010 ||
-        base.path != '/api10' ||
-        base.hasQuery ||
-        base.hasFragment ||
-        base.userInfo.isNotEmpty) {
+    try {
+      _config.validate();
+    } on LogisticaApiConfigurationException {
       throw const DeliveryApiException(
-        'Configura LOGISTICA_API10_BASE_URL con el host LOCAL y puerto 3010.',
+        LogisticaApiConfigurationException.message,
       );
     }
 
@@ -345,7 +337,7 @@ class LogisticaDeliveryService {
       onProgress?.call('Preparando entrega...');
       final request = http.Request(
         'POST',
-        Uri.parse('$_baseUrl/logistica/entregas'),
+        _config.deliveriesUri,
       )
         ..headers['Content-Type'] = 'application/json'
         ..body = jsonEncode(attempt.creationPayload);
@@ -374,8 +366,7 @@ class LogisticaDeliveryService {
           : 'Subiendo firma...');
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse(
-            '$_baseUrl/logistica/entregas/${attempt.deliveryId}/evidencias'),
+        _config.evidenceUri(attempt.deliveryId!),
       )
         ..fields['client_evidence_id'] = evidence.clientEvidenceId
         ..fields['evidence_type'] = evidence.type
@@ -414,8 +405,7 @@ class LogisticaDeliveryService {
     final response = await _send(
       http.Request(
         'POST',
-        Uri.parse(
-            '$_baseUrl/logistica/entregas/${attempt.deliveryId}/finalizar'),
+        _config.finalizeUri(attempt.deliveryId!),
       ),
       requestTimeout,
     );
@@ -468,7 +458,7 @@ class LogisticaDeliveryService {
       );
     } on http.ClientException {
       throw const DeliveryApiException(
-        'No se pudo conectar con API10 LOCAL. Revisa la conexión y '
+        'No se pudo conectar con API10. Revisa la conexión y '
         'reintenta el mismo envío.',
       );
     }

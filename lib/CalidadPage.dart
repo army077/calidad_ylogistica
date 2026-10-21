@@ -48,13 +48,12 @@ List<MenuItem> calidadMenuItems(BuildContext context) {
       subtitle: 'Liberación de empaque',
       onTap: () => go(const LiberacionEmpaque()),
     ),
-    if (kDebugMode)
-      MenuItem(
-        icon: Icons.local_shipping_rounded,
-        title: 'Entregas (LOCAL)',
-        subtitle: 'Acceso temporal de prueba',
-        onTap: () => go(const Firmaentregas()),
-      ),
+    MenuItem(
+      icon: Icons.local_shipping_rounded,
+      title: kDebugMode ? 'Entregas (LOCAL)' : 'Entregas',
+      subtitle: 'Registro y consulta de entregas',
+      onTap: () => go(const Firmaentregas()),
+    ),
   ];
 }
 

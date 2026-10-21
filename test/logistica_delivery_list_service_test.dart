@@ -373,11 +373,12 @@ void main() {
           throwsA(failure(LogisticaDeliveryListFailure.network)));
       expect(clients.single.closed, isTrue);
     });
-    test('URL ajena a API10 LOCAL no HTTP', () async {
+    test('URL con path inválido no inicia HTTP', () async {
       final clients = <TestClient>[];
       await expectLater(
           service((_) async => jsonResponse(page()),
-                  baseUrl: 'https://example.invalid/api10', clients: clients)
+                  baseUrl: 'https://example.invalid/ruta-incorrecta',
+                  clients: clients)
               .fetchPage(),
           throwsA(failure(LogisticaDeliveryListFailure.configuration)));
       expect(clients, isEmpty);
@@ -900,5 +901,55 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
+  });
+
+  for (final url in [
+    'https://backend.example/api10',
+    'https://backend.example:8443/api10',
+  ]) {
+    test('Historial HTTPS con Bearer, búsqueda y dos cursores: $url', () async {
+      const pedido = 'Pedido + /?&= á漢#%_';
+      await service((request) async {
+        expect(request.url.scheme, 'https');
+        expect(request.url.origin, Uri.parse(url).origin);
+        expect(request.url.path, '/api10/logistica/entregas/historial');
+        expect(request.url.queryParameters, {
+          'limit': '1',
+          'pedido': pedido,
+          'current_cursor': 'C+/=%',
+          'legacy_cursor': 'L+/=%',
+        });
+        expect(request.headers['Authorization'], 'Bearer TEST_ONLY_TOKEN');
+        return jsonResponse(page(items: [], legacyItems: []));
+      }, baseUrl: url)
+          .fetchPage(
+              pedido: pedido,
+              currentCursor: 'C+/=%',
+              legacyCursor: 'L+/=%',
+              limit: 1);
+    });
+  }
+
+  test('Historial con configuración inválida no solicita token ni HTTP',
+      () async {
+    for (final url in [
+      '',
+      'http://servidor-real/api10',
+      'https://backend.example/otra-ruta',
+      'https://user:TEST_ONLY_PASSWORD@backend.example/api10',
+      'https://backend.example/api10#fragment',
+    ]) {
+      var tokens = 0;
+      final clients = <TestClient>[];
+      final api = service((_) async => jsonResponse(page()), baseUrl: url,
+          auth: TestAuth(TestUser(() async {
+        tokens++;
+        return 'TEST_ONLY';
+      })), clients: clients);
+      await expectLater(api.fetchPage(),
+          throwsA(failure(LogisticaDeliveryListFailure.configuration)));
+      expect(tokens, 0);
+      expect(clients, isEmpty);
+    }
   });
 }

@@ -425,10 +425,10 @@ void main() {
     );
   });
 
-  test('Configuración ajena al endpoint LOCAL se rechaza sin HTTP', () async {
+  test('Configuración inválida se rechaza sin HTTP', () async {
     final api = LogisticaDeliveryService(
       tokenProvider: () async => 'TEST_ONLY',
-      baseUrl: 'https://example.invalid/api10',
+      baseUrl: 'https://example.invalid/ruta-incorrecta',
       clientFactory: () => throw StateError('No debe enviar HTTP'),
     );
     await expectLater(api.send(attempt()), throwsA(apiError()));
@@ -531,5 +531,67 @@ void main() {
     });
     expect(terminalSaves, 1);
     expect(requests, 4);
+  });
+
+  for (final url in [
+    'https://backend.example/api10',
+    'https://backend.example:8443/api10',
+  ]) {
+    test(
+        'Envío HTTPS conserva endpoints, token por operación y finalización: $url',
+        () async {
+      final frozen = attempt();
+      final paths = <String>[];
+      var tokens = 0;
+      final api = LogisticaDeliveryService(
+        baseUrl: url,
+        tokenProvider: () async => 'TEST_ONLY_${++tokens}',
+        clientFactory: () => FakeClient((request) async {
+          paths.add(request.url.path);
+          expect(request.url.scheme, 'https');
+          expect(request.url.origin, Uri.parse(url).origin);
+          expect(request.headers['Authorization'], 'Bearer TEST_ONLY_$tokens');
+          return normalResponse(request);
+        }),
+      );
+      await api.send(frozen);
+      expect(frozen.completed, isTrue);
+      expect(tokens, 4);
+      expect(paths, [
+        '/api10/logistica/entregas',
+        '/api10/logistica/entregas/1/evidencias',
+        '/api10/logistica/entregas/1/evidencias',
+        '/api10/logistica/entregas/1/finalizar',
+      ]);
+    });
+  }
+
+  test('Configuración inválida no solicita token ni HTTP y conserva intento',
+      () async {
+    for (final url in [
+      '',
+      'http://servidor-real/api10',
+      'https://backend.example/otra-ruta',
+      'https://user:TEST_ONLY_PASSWORD@backend.example/api10',
+      'https://backend.example/api10#fragment',
+    ]) {
+      var tokens = 0, requests = 0;
+      final frozen = attempt(), metadata = frozen.toMetadata();
+      final api = LogisticaDeliveryService(
+        baseUrl: url,
+        tokenProvider: () async {
+          tokens++;
+          return 'TEST_ONLY';
+        },
+        clientFactory: () {
+          requests++;
+          throw StateError('No HTTP');
+        },
+      );
+      await expectLater(api.send(frozen), throwsA(apiError()));
+      expect(tokens, 0);
+      expect(requests, 0);
+      expect(frozen.toMetadata(), metadata);
+    }
   });
 }

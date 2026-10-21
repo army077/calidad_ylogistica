@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-import 'logistica_delivery_service.dart' show logisticaApi10BaseUrl;
+import '../config/logistica_api_config.dart';
 
 enum LogisticaDeliveryListFailure {
   authentication,
@@ -239,11 +239,11 @@ class LogisticaDeliveryListService {
     http.Client Function()? clientFactory,
     this.requestTimeout = const Duration(seconds: 30),
   })  : _auth = auth,
-        _baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
+        _config = LogisticaApiConfig(baseUrl: baseUrl),
         _clientFactory = clientFactory ?? http.Client.new;
 
   final FirebaseAuth? _auth;
-  final String _baseUrl;
+  final LogisticaApiConfig _config;
   final http.Client Function() _clientFactory;
   final Duration requestTimeout;
 
@@ -256,24 +256,17 @@ class LogisticaDeliveryListService {
     if (limit < 1 || limit > 100) {
       throw ArgumentError.value(limit, 'limit', 'Debe estar entre 1 y 100.');
     }
-    final base = Uri.tryParse(_baseUrl);
-    if (base == null ||
-        base.scheme != 'http' ||
-        base.host.isEmpty ||
-        base.port != 3010 ||
-        base.path != '/api10' ||
-        base.hasQuery ||
-        base.hasFragment ||
-        base.userInfo.isNotEmpty) {
+    try {
+      _config.validate();
+    } on LogisticaApiConfigurationException {
       throw const LogisticaDeliveryListException(
         LogisticaDeliveryListFailure.configuration,
-        'Configura LOGISTICA_API10_BASE_URL con el host LOCAL y puerto 3010.',
+        LogisticaApiConfigurationException.message,
       );
     }
     final token = await _idToken();
-    final uri = base.replace(
-      path: '${base.path}/logistica/entregas/historial',
-      queryParameters: {
+    final uri = _config.historyUri(
+      query: {
         'limit': '$limit',
         if (pedido != null && pedido.isNotEmpty) 'pedido': pedido,
         if (currentCursor != null) 'current_cursor': currentCursor,
@@ -300,7 +293,7 @@ class LogisticaDeliveryListService {
     } on http.ClientException {
       throw const LogisticaDeliveryListException(
         LogisticaDeliveryListFailure.network,
-        'No se pudo conectar con API10 LOCAL. Revisa la conexión y reintenta.',
+        'No se pudo conectar con API10. Revisa la conexión y reintenta.',
       );
     } finally {
       client.close();
