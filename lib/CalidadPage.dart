@@ -6,6 +6,8 @@ import 'package:sistema_rastreabilidad/pages/procesoInspeccion.dart';
 import 'package:sistema_rastreabilidad/pages/procesoLiberacion.dart';
 import 'package:sistema_rastreabilidad/pages/liberacion_empaque.dart';
 import 'package:sistema_rastreabilidad/pages/Enbarque.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sistema_rastreabilidad/pages/firma-entrega.dart';
 import 'package:flutter/material.dart';
 
 /// Formularios disponibles en el navigation drawer del home.
@@ -46,6 +48,13 @@ List<MenuItem> calidadMenuItems(BuildContext context) {
       subtitle: 'Liberación de empaque',
       onTap: () => go(const LiberacionEmpaque()),
     ),
+    if (kDebugMode)
+      MenuItem(
+        icon: Icons.local_shipping_rounded,
+        title: 'Entregas (LOCAL)',
+        subtitle: 'Acceso temporal de prueba',
+        onTap: () => go(const Firmaentregas()),
+      ),
   ];
 }
 
