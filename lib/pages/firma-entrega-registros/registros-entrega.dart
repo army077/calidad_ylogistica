@@ -15,17 +15,38 @@ class Registroentregas extends StatefulWidget {
   State<Registroentregas> createState() => _RegistroentregasState();
 }
 
+class _HistorySection {
+  _HistorySection(this.source);
+
+  final LogisticaDeliverySource source;
+  final items = <LogisticaDeliveryListItem>[];
+  String? nextCursor;
+  String? moreError;
+  bool loadingMore = false;
+
+  void reset() {
+    items.clear();
+    nextCursor = null;
+    moreError = null;
+    loadingMore = false;
+  }
+
+  void append(LogisticaDeliveryListSection page) {
+    final identities = items.map((item) => item.uiKey).toSet();
+    items.addAll(page.items.where((item) => identities.add(item.uiKey)));
+    nextCursor = page.nextCursor;
+  }
+}
+
 class _RegistroentregasState extends State<Registroentregas> {
   late final LogisticaDeliveryListService _service;
   final _searchController = TextEditingController();
-  final _items = <LogisticaDeliveryListItem>[];
+  final _current = _HistorySection(LogisticaDeliverySource.current);
+  final _legacy = _HistorySection(LogisticaDeliverySource.legacy);
   Timer? _searchDebounce;
   String _pedido = '';
-  String? _nextCursor;
   String? _initialError;
-  String? _moreError;
   bool _initialLoading = true;
-  bool _loadingMore = false;
   int _requestVersion = 0;
 
   @override
@@ -57,12 +78,10 @@ class _RegistroentregasState extends State<Registroentregas> {
     final version = ++_requestVersion;
     final pedido = _pedido;
     setState(() {
-      _items.clear();
-      _nextCursor = null;
+      _current.reset();
+      _legacy.reset();
       _initialError = null;
-      _moreError = null;
       _initialLoading = true;
-      _loadingMore = false;
     });
     if (debounce) {
       _searchDebounce = Timer(const Duration(milliseconds: 350), () {
@@ -75,13 +94,12 @@ class _RegistroentregasState extends State<Registroentregas> {
 
   Future<void> _fetchFirstPage(int version, String pedido) async {
     try {
-      final page = await _service.fetchPage(
-        pedido: pedido.isEmpty ? null : pedido,
-      );
+      final page =
+          await _service.fetchPage(pedido: pedido.isEmpty ? null : pedido);
       if (!mounted || version != _requestVersion) return;
       setState(() {
-        _appendUnique(page.items);
-        _nextCursor = page.nextCursor;
+        _current.append(page.current);
+        _legacy.append(page.legacy);
         _initialLoading = false;
       });
     } catch (error) {
@@ -93,38 +111,38 @@ class _RegistroentregasState extends State<Registroentregas> {
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_initialLoading || _loadingMore || _nextCursor == null) return;
+  Future<void> _loadMore(_HistorySection section) async {
+    if (_initialLoading || section.loadingMore || section.nextCursor == null) {
+      return;
+    }
     final version = _requestVersion;
-    final cursor = _nextCursor!;
+    final cursor = section.nextCursor!;
     final pedido = _pedido;
+    final isCurrent = section.source == LogisticaDeliverySource.current;
     setState(() {
-      _loadingMore = true;
-      _moreError = null;
+      section.loadingMore = true;
+      section.moreError = null;
     });
     try {
       final page = await _service.fetchPage(
         pedido: pedido.isEmpty ? null : pedido,
-        cursor: cursor,
+        currentCursor: isCurrent ? cursor : null,
+        legacyCursor: isCurrent ? null : cursor,
       );
       if (!mounted || version != _requestVersion) return;
       setState(() {
-        _appendUnique(page.items);
-        _nextCursor = page.nextCursor;
-        _loadingMore = false;
+        // The other section is a first page in this response: leave its items
+        // AND its cursor untouched, including during concurrent pagination.
+        section.append(isCurrent ? page.current : page.legacy);
+        section.loadingMore = false;
       });
     } catch (error) {
       if (!mounted || version != _requestVersion) return;
       setState(() {
-        _moreError = _errorMessage(error);
-        _loadingMore = false;
+        section.moreError = _errorMessage(error);
+        section.loadingMore = false;
       });
     }
-  }
-
-  void _appendUnique(List<LogisticaDeliveryListItem> items) {
-    final ids = _items.map((item) => item.id).toSet();
-    _items.addAll(items.where((item) => ids.add(item.id)));
   }
 
   String _errorMessage(Object error) => error is LogisticaDeliveryListException
@@ -139,114 +157,155 @@ class _RegistroentregasState extends State<Registroentregas> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_initialError!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => _reload(),
-                child: const Text('Reintentar'),
-              ),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(_initialError!, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton(
+                onPressed: () => _reload(), child: const Text('Reintentar')),
+          ]),
         ),
       );
     }
-    if (_items.isEmpty) {
-      return Center(
-        child: Text(
-          _pedido.isEmpty
-              ? 'No hay entregas registradas.'
-              : 'No se encontraron pedidos.',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      );
-    }
-    return ListView.builder(
-      itemCount: _items.length + 1,
-      itemBuilder: (context, index) {
-        if (index < _items.length) return _deliveryCard(_items[index]);
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              if (_loadingMore)
-                const CircularProgressIndicator()
-              else if (_moreError != null) ...[
-                Text(_moreError!, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: _loadMore,
-                  child: const Text('Reintentar'),
-                ),
-              ] else if (_nextCursor != null)
-                OutlinedButton(
-                  onPressed: _loadMore,
-                  child: const Text('Cargar más'),
-                ),
-            ],
+    return CustomScrollView(
+      key: ValueKey(_requestVersion),
+      slivers: [
+        if (_pedido.isNotEmpty &&
+            _current.items.isEmpty &&
+            _legacy.items.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('No se encontraron pedidos.')),
           ),
-        );
-      },
+        ..._sectionSlivers(_current),
+        ..._sectionSlivers(_legacy),
+      ],
     );
   }
 
+  List<Widget> _sectionSlivers(_HistorySection section) {
+    final isCurrent = section.source == LogisticaDeliverySource.current;
+    final title = isCurrent ? 'Entregas actuales' : 'Registros históricos';
+    final emptyMessage = _pedido.isEmpty
+        ? (isCurrent
+            ? 'No hay entregas actuales.'
+            : 'No hay registros históricos asociados.')
+        : (isCurrent
+            ? 'No se encontraron entregas actuales para este pedido.'
+            : 'No se encontraron registros históricos para este pedido.');
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+      ),
+      if (section.items.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+              padding: const EdgeInsets.all(16), child: Text(emptyMessage)),
+        ),
+      SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _deliveryCard(section.items[index]),
+          childCount: section.items.length,
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            if (section.loadingMore)
+              CircularProgressIndicator(
+                  key: ValueKey('loading-${section.source.name}'))
+            else if (section.moreError != null) ...[
+              Text(section.moreError!, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                key: ValueKey('retry-${section.source.name}'),
+                onPressed: () => _loadMore(section),
+                child: const Text('Reintentar'),
+              ),
+            ] else if (section.nextCursor != null)
+              OutlinedButton(
+                key: ValueKey('more-${section.source.name}'),
+                onPressed: () => _loadMore(section),
+                child: const Text('Cargar más'),
+              ),
+          ]),
+        ),
+      ),
+    ];
+  }
+
   Widget _deliveryCard(LogisticaDeliveryListItem item) {
-    final localDateTime = item.createdAt.toLocal();
-    final name = item.authDisplayName;
+    final legacy = item.source == LogisticaDeliverySource.legacy;
+    final name = item.displayName;
     return Card(
-      key: ValueKey(item.id),
+      key: ValueKey(item.uiKey),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       elevation: 4,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ExpansionTile(
-        key: PageStorageKey(item.id),
+        key: PageStorageKey(item.uiKey),
         title: Text(
-          name == null || name.trim().isEmpty ? 'Usuario' : name,
+          legacy
+              ? 'Registro histórico'
+              : (name == null || name.trim().isEmpty ? 'Usuario' : name),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        subtitle: Text(
-          'Pedido: ${item.pedido}',
-          style: const TextStyle(fontSize: 16),
-        ),
+        subtitle: Text('Pedido: ${item.pedido}',
+            style: const TextStyle(fontSize: 16)),
         children: [
           ListTile(
             title: Text(
-              'Correo: ${item.authEmail ?? 'No disponible'}',
+              "${legacy ? 'Correo declarado' : 'Correo'}: ${item.email ?? 'No disponible'}",
               style: const TextStyle(fontSize: 16),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Fecha: ${DateFormat('yyyy-MM-dd').format(localDateTime)}',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  'Hora: ${DateFormat('hh:mm:ss a').format(localDateTime)}',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 7),
-                Text.rich(
-                  TextSpan(children: [
-                    const WidgetSpan(
-                      child: Icon(Icons.check_circle, size: 14),
-                      baseline: TextBaseline.ideographic,
-                      alignment: PlaceholderAlignment.middle,
-                    ),
-                    TextSpan(
-                      text: 'Img Subidas: ${item.photoCount}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ]),
-                ),
-              ],
-            ),
+            subtitle: legacy ? _legacyDetails(item) : _currentDetails(item),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _currentDetails(LogisticaDeliveryListItem item) {
+    final localDateTime = item.createdAt!.toLocal();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Fecha: ${DateFormat('yyyy-MM-dd').format(localDateTime)}"),
+        const SizedBox(height: 7),
+        Text("Hora: ${DateFormat('hh:mm:ss a').format(localDateTime)}"),
+        const SizedBox(height: 7),
+        Text.rich(TextSpan(children: [
+          const WidgetSpan(
+            child: Icon(Icons.check_circle, size: 14),
+            baseline: TextBaseline.ideographic,
+            alignment: PlaceholderAlignment.middle,
+          ),
+          TextSpan(text: 'Img Subidas: ${item.photoCount}'),
+        ])),
+      ],
+    );
+  }
+
+  Widget _legacyDetails(LogisticaDeliveryListItem item) {
+    final clock = item.recordedLocalAt!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Usuario declarado: ${item.displayName ?? 'No disponible'}"),
+        const SizedBox(height: 7),
+        Text('Fecha registrada: ${clock.substring(0, 10)}'),
+        const SizedBox(height: 7),
+        Text('Hora registrada: ${clock.substring(11)}'),
+        const SizedBox(height: 7),
+        const Text('Estado del registro: RECORDED'),
+        const SizedBox(height: 7),
+        Text(
+            'Contador de imágenes legacy (declarado): ${item.legacyImageCount}'),
+      ],
     );
   }
 
